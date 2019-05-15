@@ -56,7 +56,44 @@ If any of the tags is blank, the API will automatically return all the values fo
 |   +-- structure
 ```
 
-The "structure" part of the cube is the same as the one in the metadata. 
+The "structure" part of the cube is the same as the one in the metadata. Each observation's key has six integers corresponding to each dimension, and the first value of the list shows the total export or import in euros (EUR).
 
+## Cleaned Dataset
 
+If we split each number and store it in a DataFrame we will get something like this:
 
+| indicator_id | flow_id | product_id | country_id | frequency_id | total      |
+|--------------|---------|------------|------------|--------------|------------|
+| 0            | 0       | 0          | 0          | 0            | 1122001797 |
+| 0            | 0       | 1          | 0          | 0            | 36426892   |
+| 0            | 0       | 2          | 0          | 0            | 3728110    |
+| 0            | 0       | 3          | 0          | 0            | 975885     |
+| 0            | 0       | 4          | 0          | 0            | 975885     |
+| 0            | 0       | 5          | 0          | 0            | 181338     |
+| 0            | 0       | 6          | 0          | 0            | 229496     |
+| 0            | 0       | 7          | 0          | 0            | 134908     |
+| 0            | 0       | 8          | 0          | 0            | 314235     |
+| 0            | 0       | 9          | 0          | 0            | 115908     |
+
+Generating dictionaries from the "structure" information, we can map this numeric values to the corresponding values:
+
+| indicator_id | flow_id | product_id | country_id | frequency_id | total      |
+|--------------|---------|------------|------------|--------------|------------|
+| TRD_VAL      | EXP     | TOTAL      | TOTAL      | M            | 1122001797 |
+| TRD_VAL      | EXP     | CNI        | TOTAL      | M            | 36426892   |
+| TRD_VAL      | EXP     | CN01       | TOTAL      | M            | 3728110    |
+| TRD_VAL      | EXP     | CN0102     | TOTAL      | M            | 975885     |
+| TRD_VAL      | EXP     | CN010229   | TOTAL      | M            | 975885     |
+| TRD_VAL      | EXP     | CN01022910 | TOTAL      | M            | 181338     |
+| TRD_VAL      | EXP     | CN01022941 | TOTAL      | M            | 229496     |
+| TRD_VAL      | EXP     | CN01022949 | TOTAL      | M            | 134908     |
+| TRD_VAL      | EXP     | CN01022961 | TOTAL      | M            | 314235     |
+| TRD_VAL      | EXP     | CN01022991 | TOTAL      | M            | 115908     |
+
+## Issues and Details
+
+* As shown in the validation notebook, the deepest level (HS8) can be rolled up to HS6 and HS4, but there's a gap between HS4 and HS2... although HS2 does roll up to the Chapter. This gaps starts appearing from 2004-04 on.
+* The current database is built with HS6 as the deepest level (Per request of the client), and each level is rolled up from it.
+* Each one of these monthly files is updated when Statistics Estonia conducts reviews. Each time a new month information is added to their database, they review the data up to two years back.
+* A specific month's information is added to the database on the 10th after two months have passed (March should be the last month added on May 10th)
+* The client has asked to have matching values between their database totals and the visualisation. It's very difficult to achieve this due to the nature of the data and the reviews.
