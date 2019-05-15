@@ -97,3 +97,49 @@ Generating dictionaries from the "structure" information, we can map this numeri
 * Each one of these monthly files is updated when Statistics Estonia conducts reviews. Each time a new month information is added to their database, they review the data up to two years back.
 * A specific month's information is added to the database on the 10th after two months have passed (March should be the last month added on May 10th)
 * The client has asked to have matching values between their database totals and the visualisation. It's very difficult to achieve this due to the nature of the data and the reviews.
+
+## Current Design of Tables
+
+In the fact table, all products are filtered and only the ones in the HS6 level are kept, in addition to the other transformations performed on the dataframe, the result looks like this:
+
+| date_id | flow_id | product_id | geography_id | total  |
+|---------|---------|------------|--------------|--------|
+| 121     | 1       | 1          | 0            | 975885 |
+
+* A *date_id* is created in the ETL to keep track of the time dimension, the index 121 would point to "2012-09" in the date table.
+* The *flow_id* points to "EXP".
+* The *product_id* points to the HS6 code "010229".
+* The *geography_id* points to "TOTAL", but these values are currently dropped from the database, in order to keep only trades pointing to one specific country. We'll keep the value here to illustrate the products behavior rather than the countries one.
+
+The products dimension table has this index, connects the levels and shows the names in English and Estonian, in long and short versions, to improve the visualisations in the Front End. A short version of the table would look like this:
+
+| product_id | hs6_id | hs6_name                                   | hs4_id | hs4_name            | hs2_id | hs2_name                      | chapter_id | chapter_name    |
+|------------|--------|--------------------------------------------|--------|---------------------|--------|-------------------------------|------------|-----------------|
+| 1          | 010229 | Live cattle (excl. pure-bred for breeding) | 0102   | Live bovine animals | 01     | Live animals; animal products | 01         | Animal products |
+
+## Proposed Design
+
+A possible solution for this issue, would be to keep both HS6 and HS2 in the fact table, and then redesign the product dimension table.
+
+Raw Fact Table:
+
+| indicator_id | flow_id | product_id | country_id | frequency_id | total      |
+|--------------|---------|------------|------------|--------------|------------|
+| TRD_VAL      | EXP     | CN01       | TOTAL      | M            | 3728110    |
+| TRD_VAL      | EXP     | CN010229   | TOTAL      | M            | 975885     |
+
+Transformed Fact Table:
+
+| date_id | flow_id | product_id | geography_id | total  |
+|---------|---------|------------|--------------|--------|
+| 121     | 1       | 1          | 0            | 3728110|
+| 121     | 1       | 2          | 0            | 975885 |
+
+Product Dimension Table:
+
+| product_id | lower_id | lower_name                                 | higher_id | higher_name         |
+|------------|----------|--------------------------------------------|-----------|---------------------|
+| 1          | 01       | Live animals; animal products              | 01        | Animal products     |
+| 2          | 010229   | Live cattle (excl. pure-bred for breeding) | 0102      | Live bovine animals |
+
+This way, **lower_id** would have HS6 and HS2, while **higher_id** would have HS4 and Chapter. This separation of the hierarchy will allow us to perform aggregations with different data, matching the values from the SE Database exactly in the visualisation.
