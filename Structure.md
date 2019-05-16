@@ -110,6 +110,7 @@ In the fact table, all products are filtered and only the ones in the HS6 level 
 * The *flow_id* points to "EXP".
 * The *product_id* points to the HS6 code "010229".
 * The *geography_id* points to "TOTAL", but these values are currently dropped from the database, in order to keep only trades pointing to one specific country. We'll keep the value here to illustrate the products behavior rather than the countries one.
+* The *indicator_id* and *frequency_id* columns are dropped, since they always show the same information.
 
 The products dimension table has this index, connects the levels and shows the names in English and Estonian, in long and short versions, to improve the visualisations in the Front End. A short version of the table would look like this:
 
@@ -119,27 +120,34 @@ The products dimension table has this index, connects the levels and shows the n
 
 ## Proposed Design
 
-A possible solution for this issue, would be to keep both HS6 and HS2 in the fact table, and then redesign the product dimension table.
+A possible solution for this issue, would be to keep both HS6 and HS2 in the fact table, and then split the product dimension table.
 
-Raw Fact Table:
+**Raw Fact Table:**
 
 | indicator_id | flow_id | product_id | country_id | frequency_id | total      |
 |--------------|---------|------------|------------|--------------|------------|
 | TRD_VAL      | EXP     | CN01       | TOTAL      | M            | 3728110    |
 | TRD_VAL      | EXP     | CN010229   | TOTAL      | M            | 975885     |
 
-Transformed Fact Table:
+**Transformed Fact Table:**
 
 | date_id | flow_id | product_id | geography_id | total  |
 |---------|---------|------------|--------------|--------|
-| 121     | 1       | 1          | 0            | 3728110|
-| 121     | 1       | 2          | 0            | 975885 |
+| 121     | 1       | 8801       | 0            | 3728110|
+| 121     | 1       | 88010229   | 0            | 975885 |
 
-Product Dimension Table:
+* In this new design, all product codes will include "88" as a starting tag, to help the conversion to `int` without losing zeroes at the start of the string, and to keep better track of the product.
 
-| product_id | lower_id | lower_name                                 | higher_id | higher_name         |
-|------------|----------|--------------------------------------------|-----------|---------------------|
-| 1          | 01       | Live animals; animal products              | 01        | Animal products     |
-| 2          | 010229   | Live cattle (excl. pure-bred for breeding) | 0102      | Live bovine animals |
+**Higher Product Levels Dimension Table:**
 
-This way, **lower_id** would have HS6 and HS2, while **higher_id** would have HS4 and Chapter. This separation of the hierarchy will allow us to perform aggregations with different data, matching the values from the SE Database exactly in the visualisation.
+| product_id | hs2_id   | hs2_name                                   | chapter_id | chapter_name        |
+|------------|----------|--------------------------------------------|------------|---------------------|
+| 8801       | 8801     | Live animals; animal products              | 8801       | Live animals        |
+
+**Lower Product Levels Dimension Table:**
+
+| product_id | hs6_id   | hs6_name                                   | hs4_id     | hs4_name            |
+|------------|----------|--------------------------------------------|------------|---------------------|
+| 88010229   | 88010229 | Live cattle (excl. pure-bred for breeding) | 880102     | Live bovine animals |
+
+This separation of the hierarchy will allow us to perform aggregations with different data, matching the values from the SE Database exactly in the visualisation.
